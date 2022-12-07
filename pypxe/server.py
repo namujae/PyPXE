@@ -3,6 +3,7 @@ import threading
 import io
 import os
 import sys
+import platform
 import json
 import logging
 import logging.handlers
@@ -134,6 +135,10 @@ def do_verbose(service):
     return ((service in args.MODE_VERBOSE.lower()
             or 'all' in args.MODE_VERBOSE.lower())
             and '-{0}'.format(service) not in args.MODE_VERBOSE.lower())
+
+def is_unix_system():
+    curret_system = platform.system()
+    return curret_system != 'Windows'
 
 def main():
     global SETTINGS, args
@@ -300,8 +305,12 @@ def main():
                 saveleases = args.LEASES_FILE)
             signal.signal(signal.SIGINT, dhcp_export_leases)
             signal.signal(signal.SIGTERM, dhcp_export_leases)
-            signal.signal(signal.SIGALRM, dhcp_export_leases)
-            signal.signal(signal.SIGHUP, dhcp_export_leases)
+
+            # https://github.com/lithops-cloud/lithops/pull/122/commits/dc6fbe48b9d1900c30b5ac8d8effdc1cd38c6c5a#diff-1546afaee69f105d8fdd3c8d1dc93fe4daa0c084b1e8597139056e2ef845c1a2
+            if is_unix_system():
+                signal.signal(signal.SIGALRM, dhcp_export_leases) # unix
+                signal.signal(signal.SIGHUP, dhcp_export_leases) # unix
+
             dhcpd = threading.Thread(target = dhcp_server.listen)
             dhcpd.daemon = True
             dhcpd.start()
